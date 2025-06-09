@@ -37,4 +37,8 @@ export class Profile {
   @Field()
   @UpdateDateColumn()
   updatedAt: Date;
+
+    @Field({ defaultValue: false }) // <- nouveau champ exposé à GraphQL
+  @Column({ default: false })     // <- stocké dans la base
+  accepted: boolean;
 }

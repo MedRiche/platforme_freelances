@@ -8,6 +8,10 @@
     table { width: 100%; border-collapse: collapse; }
     th, td { border: 1px solid #ccc; padding: 8px; }
     th { background: #f4f4f4; }
+    .accepted { background-color: #e0ffe0; }
+    button { margin-right: 5px; padding: 5px 10px; }
+    .delete-btn { background: #f44336; color: white; border: none; }
+    .accept-btn { background: #4CAF50; color: white; border: none; }
   </style>
 </head>
 <body>
@@ -19,6 +23,7 @@
         <th>Nom</th>
         <th>Compétences</th>
         <th>Liens</th>
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody id="profiles-list">
@@ -28,21 +33,21 @@
 
   <script>
     const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role');
-     if (!token) {
-    alert('Vous devez être connecté');
-    window.location.href = 'login.html';
-  }
+    if (!token) {
+      alert('Vous devez être connecté');
+      window.location.href = 'login.html';
+    }
 
-  const payload = JSON.parse(atob(token.split('.')[1]));
-  if (payload.role !== 'RH') {
-    alert('Accès réservé aux RH');
-    window.location.href = 'profile.html'; // ou autre page selon ton app
-  }
-    
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    if (payload.role !== 'RH') {
+      alert('Accès réservé aux RH');
+      window.location.href = 'profile.html';
+    }
+
     const query = `
       query {
         profiles {
+          id
           firstName
           lastName
           skills
@@ -50,7 +55,8 @@
         }
       }
     `;
-    fetch('/graphql', {
+
+    fetch('http://localhost:3000/graphql', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -58,23 +64,72 @@
       },
       body: JSON.stringify({ query }),
     })
-      .then(res => res.json())
-      .then(res => {
-        if (res.errors) throw new Error(res.errors[0].message);
-        const profiles = res.data.profiles;
-        const tbody = document.getElementById('profiles-list');
-        profiles.forEach(p => {
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td>${p.firstName}</td>
-            <td>${p.lastName}</td>
-            <td>${p.skills.join(', ')}</td>
-            <td>${p.professionalLinks.join(', ')}</td>
-          `;
-          tbody.appendChild(row);
+    .then(res => res.json())
+    .then(res => {
+      if (res.errors) throw new Error(res.errors[0].message);
+      const profiles = res.data.profiles;
+      const tbody = document.getElementById('profiles-list');
+      profiles.forEach(p => {
+        const row = document.createElement('tr');
+        row.setAttribute('data-id', p.id);
+        row.innerHTML = `
+          <td>${p.firstName}</td>
+          <td>${p.lastName}</td>
+          <td>${p.skills.join(', ')}</td>
+          <td>${p.professionalLinks.join(', ')}</td>
+          <td>
+            <button class="accept-btn">Accepter</button>
+            <button class="delete-btn">Supprimer</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      // Gestion des boutons après ajout dans le DOM
+      document.querySelectorAll('.accept-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+          const row = this.closest('tr');
+          row.classList.add('accepted');
+          this.disabled = true;
+          this.textContent = '✔️ Accepté';
         });
-      })
-      .catch(err => alert("Erreur : " + err));
+      });
+
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async function () {
+          const row = this.closest('tr');
+          const profileId = row.getAttribute('data-id');
+          if (!confirm("Supprimer ce profil ?")) return;
+
+          try {
+            const response = await fetch('http://localhost:3000/graphql', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+              },
+              body: JSON.stringify({
+                query: `
+                  mutation DeleteProfile($id: String!) {
+                    deleteProfile(id: $id)
+                  }
+                `,
+                variables: { id: profileId }
+              })
+            });
+
+            const result = await response.json();
+            if (result.errors) throw new Error(result.errors[0].message);
+
+            row.remove();
+            alert("Profil supprimé avec succès !");
+          } catch (err) {
+            alert("Erreur de suppression : " + err.message);
+          }
+        });
+      });
+    })
+    .catch(err => alert("Erreur : " + err.message));
   </script>
 </body>
 </html>

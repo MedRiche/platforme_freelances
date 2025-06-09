@@ -23,7 +23,7 @@ mutation {
 
 
 mutation {
-  login(input: {
+  createUser(input: {
     email: "amina@test.com"
     password: "123456"
   })

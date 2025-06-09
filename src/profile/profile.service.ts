@@ -32,6 +32,11 @@ export class ProfileService {
     if (currentUserId !== profile.user.id && currentUserRole !== 'RH') {
       throw new UnauthorizedException('Not authorized to update this profile');
     }
+
+     // Seul un RH peut modifier le champ accepted
+  if (input.accepted !== undefined && currentUserRole !== 'RH') {
+    throw new UnauthorizedException('Seul RH peut modifier le champ accepted');
+  }
     Object.assign(profile, input);
     return this.profileRepository.save(profile);
   }
@@ -65,5 +70,5 @@ export class ProfileService {
     return profile;
   }
 
-  
+
 }

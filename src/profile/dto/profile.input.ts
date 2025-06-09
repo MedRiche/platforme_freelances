@@ -39,4 +39,8 @@ export class UpdateProfileInput {
   @IsOptional()
   @IsArray()
   professionalLinks?: string[];
+
+  @Field({ nullable: true }) // <- Ajout pour permettre la mise à jour
+  @IsOptional()
+  accepted?: boolean;
 }

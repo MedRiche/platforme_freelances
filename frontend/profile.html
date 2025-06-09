@@ -4,15 +4,47 @@
   <meta charset="UTF-8">
   <title>Mon Profil</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
-    .profile-card { background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-    .profile-field { margin-bottom: 10px; }
-    .profile-field strong { display: inline-block; width: 150px; }
-    .actions { display: flex; gap: 10px; margin-top: 20px; }
-    button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .profile-card {
+      background: #f9f9f9;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .profile-field {
+      margin-bottom: 10px;
+    }
+    .profile-field strong {
+      display: inline-block;
+      width: 150px;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    button {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
     .edit-btn { background: #4CAF50; color: white; }
     .delete-btn { background: #f44336; color: white; }
     .logout-btn { background: #2196F3; color: white; }
+    .accepted-btn {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -23,6 +55,10 @@
     <div class="profile-field"><strong>Nom:</strong> <span id="lastName"></span></div>
     <div class="profile-field"><strong>Compétences:</strong> <span id="skills"></span></div>
     <div class="profile-field"><strong>Liens professionnels:</strong> <span id="professionalLinks"></span></div>
+    <div class="profile-field" id="acceptStatus" style="display: none;">
+      <strong>Statut RH:</strong>
+      <button class="accepted-btn" disabled>✔️ Accepté</button>
+    </div>
   </div>
 
   <div class="actions">
@@ -56,6 +92,7 @@
                   lastName
                   skills
                   professionalLinks
+                  accepted
                 }
               }
             }`
@@ -74,6 +111,10 @@
         document.getElementById('lastName').textContent = profile.lastName || 'Non renseigné';
         document.getElementById('skills').textContent = (profile.skills || []).join(', ') || 'Aucune';
         document.getElementById('professionalLinks').textContent = (profile.professionalLinks || []).join(', ') || 'Aucun';
+
+        if (profile.accepted) {
+          document.getElementById('acceptStatus').style.display = 'block';
+        }
 
       } catch (err) {
         alert('Erreur de chargement du profil : ' + err.message);
