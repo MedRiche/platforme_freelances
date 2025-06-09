@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Accueil</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    button { margin-top: 20px; padding: 8px 12px; }
+  </style>
+</head>
+<body>
+  <h1>Bienvenue sur la plateforme</h1>
+  <p>Vous êtes connecté.</p>
+  <button id="profileBtn">Voir mon profil</button>
+  <button id="logoutBtn">Se déconnecter</button>
+
+ <script>
+  const token = localStorage.getItem('token');
+  
+  if(!token) {
+    window.location.href = 'login.html';
+  }
+
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    localStorage.removeItem('token');
+    window.location.href = 'login.html';
+  });
+
+  document.getElementById('profileBtn').addEventListener('click', () => {
+    window.location.href = 'profile-form.html';
+  });
+
+  // Optionnel : Vérifier l'existence du profil
+  async function checkProfile() {
+    try {
+      const query = `{ myProfile { id } }`;
+      const res = await fetch('http://localhost:3000/graphql', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ query })
+      });
+      
+      const data = await res.json();
+      
+      if (!data.data?.myProfile?.id) {
+        if (confirm("Vous n'avez pas encore de profil. Souhaitez-vous en créer un maintenant ?")) {
+          window.location.href = 'profile-form.html';
+        }
+      }
+    } catch (error) {
+      console.error('Erreur vérification profil:', error);
+    }
+  }
+  
+  checkProfile();
+</script>
+</body>
+</html>

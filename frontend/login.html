@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Connexion</title>
+</head>
+<body>
+  <h1>Connexion</h1>
+  <form id="login-form">
+    <input type="email" id="email" placeholder="Email" required /><br />
+    <input type="password" id="password" placeholder="Mot de passe" required /><br />
+    <button type="submit">Se connecter</button>
+  </form>
+
+  <script>
+    const form = document.getElementById('login-form');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      const query = `
+        mutation Login($input: LoginInput!) {
+          login(input: $input)
+        }
+      `;
+
+      const variables = {
+        input: { email, password }
+      };
+
+      try {
+        const response = await fetch('http://localhost:3000/graphql', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, variables }),
+        });
+        const data = await response.json();
+        if (data.errors) {
+        alert('Erreur : ' + data.errors[0].message);
+        return;
+      }
+      
+      const token = data.data.login;
+      localStorage.setItem('token', token);
+      
+      // Vérifier si le profil existe
+      const profileQuery = `{ myProfile { id } }`;
+      const profileRes = await fetch('http://localhost:3000/graphql', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ query: profileQuery })
+      });
+      
+      const profileData = await profileRes.json();
+      
+      if (profileData.data?.myProfile?.id) {
+        window.location.href = 'index.html';
+      } else {
+        window.location.href = 'profile-form.html';
+      }
+      
+    } catch (err) {
+      alert('Erreur serveur : ' + err.message);
+    }
+  });
+  </script>
+</body>
+</html>

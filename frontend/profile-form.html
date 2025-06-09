@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Profil</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    input, button { display: block; width: 100%; margin: 10px 0; padding: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Mon Profil</h1>
+  <form id="profileForm">
+    <input type="text" id="firstName" placeholder="Prénom" required />
+    <input type="text" id="lastName" placeholder="Nom" required />
+    <input type="text" id="skills" placeholder="Compétences (séparées par des virgules)" />
+    <input type="text" id="professionalLinks" placeholder="Liens professionnels (séparés par des virgules)" />
+    <button type="submit">Mettre à jour</button>
+  </form>
+  <p id="message" style="color:green;"></p>
+  <p id="error" style="color:red;"></p>
+  <button id="backBtn">Retour à l'accueil</button>
+
+  <script>
+    const token = localStorage.getItem('token');
+    const errorP = document.getElementById('error');
+    const messageP = document.getElementById('message');
+    const form = document.getElementById('profileForm');
+    const backBtn = document.getElementById('backBtn');
+
+    if (!token) {
+      window.location.href = 'login.html';
+    }
+
+    let profileId = null;
+
+    async function fetchProfile() {
+      const query = `
+        query {
+          myProfile {
+            id
+            firstName
+            lastName
+            skills
+            professionalLinks
+          }
+        }
+      `;
+
+      try {
+        const res = await fetch('http://localhost:3000/graphql', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token,
+          },
+          body: JSON.stringify({ query }),
+        });
+        
+        const data = await res.json();
+
+        if(data.errors) {
+          errorP.textContent = data.errors[0].message || 'Erreur lors du chargement du profil';
+          return;
+        }
+
+        const profile = data.data.myProfile;
+        if (!profile) {
+          errorP.textContent = 'Aucun profil trouvé';
+          return;
+        }
+
+        profileId = profile.id;
+        form.firstName.value = profile.firstName || '';
+        form.lastName.value = profile.lastName || '';
+        form.skills.value = profile.skills?.join(', ') || '';
+        form.professionalLinks.value = profile.professionalLinks?.join(', ') || '';
+
+      } catch (err) {
+        errorP.textContent = 'Erreur réseau : ' + err.message;
+      }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorP.textContent = '';
+      messageP.textContent = '';
+
+      // Vérifier si l'ID est bien récupéré
+      if (!profileId) {
+        errorP.textContent = 'Erreur : ID de profil non trouvé. Veuillez réessayer.';
+        return;
+      }
+
+      const firstName = form.firstName.value;
+      const lastName = form.lastName.value;
+      const skills = form.skills.value.split(',').map(s => s.trim()).filter(Boolean);
+      const professionalLinks = form.professionalLinks.value.split(',').map(s => s.trim()).filter(Boolean);
+
+      const mutation = `
+        mutation UpdateProfile($id: String!, $input: UpdateProfileInput!) {
+          updateProfile(id: $id, input: $input) {
+            id
+          }
+        }
+      `;
+
+      const variables = {
+        id: profileId,
+        input: {
+          firstName,
+          lastName,
+          skills,
+          professionalLinks
+        }
+      };
+
+      try {
+        const res = await fetch('http://localhost:3000/graphql', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token,
+          },
+          body: JSON.stringify({ query: mutation, variables }),
+        });
+        
+        const data = await res.json();
+
+        if(data.errors) {
+          errorP.textContent = data.errors[0].message || 'Erreur lors de la mise à jour';
+          return;
+        }
+
+        messageP.textContent = 'Profil mis à jour avec succès';
+
+      } catch (err) {
+        errorP.textContent = 'Erreur réseau : ' + err.message;
+      }
+    });
+
+    backBtn.addEventListener('click', () => {
+      window.location.href = 'index.html';
+    });
+
+    fetchProfile();
+  </script>
+</body>
+</html>
