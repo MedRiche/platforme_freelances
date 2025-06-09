@@ -1,149 +1,155 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <title>Profil</title>
+  <meta charset="UTF-8">
+  <title>Mon Profil</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
-    input, button { display: block; width: 100%; margin: 10px 0; padding: 8px; }
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+    input, textarea, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; }
+    button { background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+    button.secondary { background-color: #f44336; }
+    .form-group { margin-bottom: 15px; }
+    #message { color: green; }
+    #error { color: red; }
   </style>
 </head>
 <body>
-  <h1>Mon Profil</h1>
+  <h1>Complétez votre profil</h1>
   <form id="profileForm">
-    <input type="text" id="firstName" placeholder="Prénom" required />
-    <input type="text" id="lastName" placeholder="Nom" required />
-    <input type="text" id="skills" placeholder="Compétences (séparées par des virgules)" />
-    <input type="text" id="professionalLinks" placeholder="Liens professionnels (séparés par des virgules)" />
-    <button type="submit">Mettre à jour</button>
+    <div class="form-group">
+      <label for="firstName">Prénom:</label>
+      <input type="text" id="firstName" required>
+    </div>
+    <div class="form-group">
+      <label for="lastName">Nom:</label>
+      <input type="text" id="lastName" required>
+    </div>
+    <div class="form-group">
+      <label for="skills">Compétences (séparées par des virgules):</label>
+      <input type="text" id="skills">
+    </div>
+    <div class="form-group">
+      <label for="professionalLinks">Liens professionnels (séparés par des virgules):</label>
+      <input type="text" id="professionalLinks">
+    </div>
+    <button type="submit">Enregistrer le profil</button>
   </form>
-  <p id="message" style="color:green;"></p>
-  <p id="error" style="color:red;"></p>
-  <button id="backBtn">Retour à l'accueil</button>
+  <p id="message"></p>
+  <p id="error"></p>
 
   <script>
     const token = localStorage.getItem('token');
-    const errorP = document.getElementById('error');
-    const messageP = document.getElementById('message');
-    const form = document.getElementById('profileForm');
-    const backBtn = document.getElementById('backBtn');
-
     if (!token) {
       window.location.href = 'login.html';
     }
 
-    let profileId = null;
-
-    async function fetchProfile() {
-      const query = `
-        query {
-          myProfile {
-            id
-            firstName
-            lastName
-            skills
-            professionalLinks
-          }
-        }
-      `;
-
-      try {
-        const res = await fetch('http://localhost:3000/graphql', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token,
-          },
-          body: JSON.stringify({ query }),
-        });
-        
-        const data = await res.json();
-
-        if(data.errors) {
-          errorP.textContent = data.errors[0].message || 'Erreur lors du chargement du profil';
-          return;
-        }
-
-        const profile = data.data.myProfile;
-        if (!profile) {
-          errorP.textContent = 'Aucun profil trouvé';
-          return;
-        }
-
-        profileId = profile.id;
-        form.firstName.value = profile.firstName || '';
-        form.lastName.value = profile.lastName || '';
-        form.skills.value = profile.skills?.join(', ') || '';
-        form.professionalLinks.value = profile.professionalLinks?.join(', ') || '';
-
-      } catch (err) {
-        errorP.textContent = 'Erreur réseau : ' + err.message;
-      }
-    }
-
-    form.addEventListener('submit', async (e) => {
+    document.getElementById('profileForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      errorP.textContent = '';
-      messageP.textContent = '';
+      const messageElement = document.getElementById('message');
+      const errorElement = document.getElementById('error');
+      messageElement.textContent = '';
+      errorElement.textContent = '';
 
-      // Vérifier si l'ID est bien récupéré
-      if (!profileId) {
-        errorP.textContent = 'Erreur : ID de profil non trouvé. Veuillez réessayer.';
-        return;
-      }
-
-      const firstName = form.firstName.value;
-      const lastName = form.lastName.value;
-      const skills = form.skills.value.split(',').map(s => s.trim()).filter(Boolean);
-      const professionalLinks = form.professionalLinks.value.split(',').map(s => s.trim()).filter(Boolean);
-
-      const mutation = `
-        mutation UpdateProfile($id: String!, $input: UpdateProfileInput!) {
-          updateProfile(id: $id, input: $input) {
-            id
-          }
-        }
-      `;
-
-      const variables = {
-        id: profileId,
-        input: {
-          firstName,
-          lastName,
-          skills,
-          professionalLinks
-        }
+      const profileData = {
+        firstName: document.getElementById('firstName').value,
+        lastName: document.getElementById('lastName').value,
+        skills: document.getElementById('skills').value.split(',').map(s => s.trim()).filter(Boolean),
+        professionalLinks: document.getElementById('professionalLinks').value.split(',').map(s => s.trim()).filter(Boolean)
       };
 
       try {
-        const res = await fetch('http://localhost:3000/graphql', {
+        // Vérifier si le profil existe déjà
+        const checkResponse = await fetch('http://localhost:3000/graphql', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token,
+            'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({ query: mutation, variables }),
+          body: JSON.stringify({
+            query: `{ myProfile { id } }`
+          })
         });
-        
-        const data = await res.json();
 
-        if(data.errors) {
-          errorP.textContent = data.errors[0].message || 'Erreur lors de la mise à jour';
-          return;
+        const checkData = await checkResponse.json();
+        const profileExists = checkData.data?.myProfile?.id;
+
+        // Mutation pour créer ou mettre à jour le profil
+        const mutation = profileExists ? `
+          mutation UpdateProfile($id: String!, $input: UpdateProfileInput!) {
+            updateProfile(id: $id, input: $input) { id }
+          }
+        ` : `
+          mutation CreateProfile($input: CreateProfileInput!) {
+            createProfile(input: $input) { id }
+          }
+        `;
+
+        const variables = profileExists ? {
+          id: checkData.data.myProfile.id,
+          input: profileData
+        } : {
+          input: profileData
+        };
+
+        const response = await fetch('http://localhost:3000/graphql', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            query: mutation,
+            variables
+          })
+        });
+
+        const data = await response.json();
+        if (data.errors) {
+          throw new Error(data.errors[0].message);
         }
 
-        messageP.textContent = 'Profil mis à jour avec succès';
-
-      } catch (err) {
-        errorP.textContent = 'Erreur réseau : ' + err.message;
+        messageElement.textContent = 'Profil enregistré avec succès!';
+        setTimeout(() => window.location.href = 'profile.html', 1500);
+      } catch (error) {
+        errorElement.textContent = error.message;
       }
     });
 
-    backBtn.addEventListener('click', () => {
-      window.location.href = 'index.html';
-    });
+    // Pré-remplir le formulaire si le profil existe
+    async function loadProfile() {
+      try {
+        const response = await fetch('http://localhost:3000/graphql', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            query: `{
+              myProfile {
+                firstName
+                lastName
+                skills
+                professionalLinks
+              }
+            }`
+          })
+        });
 
-    fetchProfile();
+        const data = await response.json();
+        if (data.data?.myProfile) {
+          const profile = data.data.myProfile;
+          document.getElementById('firstName').value = profile.firstName || '';
+          document.getElementById('lastName').value = profile.lastName || '';
+          document.getElementById('skills').value = profile.skills?.join(', ') || '';
+          document.getElementById('professionalLinks').value = profile.professionalLinks?.join(', ') || '';
+        }
+      } catch (error) {
+        console.error('Erreur de chargement du profil:', error);
+      }
+    }
+
+    loadProfile();
   </script>
 </body>
 </html>

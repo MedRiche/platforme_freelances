@@ -33,7 +33,7 @@ export class UserService {
     user: savedUser
   });
   
-  await this.profileRepository.save(profile);
+await this.profileService.createEmptyProfile(savedUser.id);
   
   return savedUser;
 }

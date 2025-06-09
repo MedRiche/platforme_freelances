@@ -1,60 +1,60 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Inscription</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; }
+    input, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; }
+    button { background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+    button:hover { background-color: #45a049; }
+  </style>
 </head>
 <body>
   <h1>Inscription</h1>
-  <form id="register-form">
-    <input type="email" id="email" placeholder="Email" required /><br />
-    <input type="password" id="password" placeholder="Mot de passe" required /><br />
+  <form id="registerForm">
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="password" id="password" placeholder="Mot de passe" required minlength="6">
     <button type="submit">S'inscrire</button>
   </form>
+  <p id="error" style="color: red;"></p>
+  <p>Déjà inscrit? <a href="login.html">Connectez-vous</a></p>
 
   <script>
-    const form = document.getElementById('register-form');
-    form.addEventListener('submit', async (e) => {
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
-
-      const query = `
-        mutation CreateUser($input: CreateUserInput!) {
-          createUser(input: $input) {
-            id
-            email
-          }
-        }
-      `;
-
-      const variables = {
-        input: { 
-          email, 
-          password,
-          role: "FREELANCER" // Rôle par défaut
-        }
-      };
+      const errorElement = document.getElementById('error');
 
       try {
         const response = await fetch('http://localhost:3000/graphql', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query, variables }),
+          body: JSON.stringify({
+            query: `
+              mutation Register($input: CreateUserInput!) {
+                createUser(input: $input) {
+                  id
+                  email
+                }
+              }
+            `,
+            variables: {
+              input: { email, password, role: "FREELANCER" }
+            }
+          })
         });
-        
+
         const data = await response.json();
-        
         if (data.errors) {
-          alert('Erreur : ' + data.errors[0].message);
-          return;
+          throw new Error(data.errors[0].message);
         }
-        
-        alert('Inscription réussie ! Connectez-vous maintenant.');
+
+        alert('Inscription réussie! Veuillez vous connecter.');
         window.location.href = 'login.html';
-      } catch (err) {
-        alert('Erreur serveur : ' + err.message);
+      } catch (error) {
+        errorElement.textContent = error.message;
       }
     });
   </script>

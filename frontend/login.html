@@ -1,73 +1,59 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Connexion</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; }
+    input, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; }
+    button { background-color: #2196F3; color: white; border: none; cursor: pointer; }
+    button:hover { background-color: #0b7dda; }
+  </style>
 </head>
 <body>
   <h1>Connexion</h1>
-  <form id="login-form">
-    <input type="email" id="email" placeholder="Email" required /><br />
-    <input type="password" id="password" placeholder="Mot de passe" required /><br />
+  <form id="loginForm">
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="password" id="password" placeholder="Mot de passe" required>
     <button type="submit">Se connecter</button>
   </form>
+  <p id="error" style="color: red;"></p>
+  <p>Pas encore inscrit? <a href="register.html">Créez un compte</a></p>
 
   <script>
-    const form = document.getElementById('login-form');
-    form.addEventListener('submit', async (e) => {
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
-
-      const query = `
-        mutation Login($input: LoginInput!) {
-          login(input: $input)
-        }
-      `;
-
-      const variables = {
-        input: { email, password }
-      };
+      const errorElement = document.getElementById('error');
 
       try {
         const response = await fetch('http://localhost:3000/graphql', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query, variables }),
+          body: JSON.stringify({
+            query: `
+              mutation Login($input: LoginInput!) {
+                login(input: $input)
+              }
+            `,
+            variables: {
+              input: { email, password }
+            }
+          })
         });
+
         const data = await response.json();
         if (data.errors) {
-        alert('Erreur : ' + data.errors[0].message);
-        return;
-      }
-      
-      const token = data.data.login;
-      localStorage.setItem('token', token);
-      
-      // Vérifier si le profil existe
-      const profileQuery = `{ myProfile { id } }`;
-      const profileRes = await fetch('http://localhost:3000/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + token
-        },
-        body: JSON.stringify({ query: profileQuery })
-      });
-      
-      const profileData = await profileRes.json();
-      
-      if (profileData.data?.myProfile?.id) {
-        window.location.href = 'index.html';
-      } else {
+          throw new Error(data.errors[0].message);
+        }
+
+        localStorage.setItem('token', data.data.login);
         window.location.href = 'profile-form.html';
+      } catch (error) {
+        errorElement.textContent = error.message;
       }
-      
-    } catch (err) {
-      alert('Erreur serveur : ' + err.message);
-    }
-  });
+    });
   </script>
 </body>
 </html>

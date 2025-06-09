@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Mon Profil</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+    .profile-card { background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+    .profile-field { margin-bottom: 10px; }
+    .profile-field strong { display: inline-block; width: 150px; }
+    .actions { display: flex; gap: 10px; margin-top: 20px; }
+    button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
+    .edit-btn { background: #4CAF50; color: white; }
+    .delete-btn { background: #f44336; color: white; }
+    .logout-btn { background: #2196F3; color: white; }
+  </style>
+</head>
+<body>
+  <h1>Mon Profil</h1>
+  
+  <div class="profile-card">
+    <div class="profile-field"><strong>Prénom:</strong> <span id="firstName"></span></div>
+    <div class="profile-field"><strong>Nom:</strong> <span id="lastName"></span></div>
+    <div class="profile-field"><strong>Compétences:</strong> <span id="skills"></span></div>
+    <div class="profile-field"><strong>Liens professionnels:</strong> <span id="professionalLinks"></span></div>
+  </div>
+
+  <div class="actions">
+    <button class="edit-btn" onclick="window.location.href='profile-form.html'">Modifier</button>
+    <button class="delete-btn" id="deleteBtn">Supprimer</button>
+    <button class="logout-btn" onclick="logout()">Déconnexion</button>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.href = 'login.html';
+    }
+
+    async function loadProfile() {
+      try {
+        const response = await fetch('http://localhost:3000/graphql', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            query: `{
+              myProfile {
+                firstName
+                lastName
+                skills
+                professionalLinks
+              }
+            }`
+          })
+        });
+
+        const data = await response.json();
+        if (data.errors) {
+          throw new Error(data.errors[0].message);
+        }
+
+        const profile = data.data.myProfile;
+        document.getElementById('firstName').textContent = profile.firstName || 'Non renseigné';
+        document.getElementById('lastName').textContent = profile.lastName || 'Non renseigné';
+        document.getElementById('skills').textContent = profile.skills?.join(', ') || 'Aucune';
+        document.getElementById('professionalLinks').textContent = profile.professionalLinks?.join(', ') || 'Aucun';
+      } catch (error) {
+        alert('Erreur de chargement du profil: ' + error.message);
+      }
+    }
+
+    document.getElementById('deleteBtn').addEventListener('click', async () => {
+      if (!confirm('Êtes-vous sûr de vouloir supprimer votre profil? Cette action est irréversible.')) {
+        return;
+      }
+
+      try {
+        // Récupérer l'ID du profil d'abord
+        const checkResponse = await fetch('http://localhost:3000/graphql', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            query: `{ myProfile { id } }`
+          })
+        });
+
+        const checkData = await checkResponse.json();
+        const profileId = checkData.data?.myProfile?.id;
+
+        if (!profileId) {
+          throw new Error('Profil non trouvé');
+        }
+
+        // Supprimer le profil
+        const deleteResponse = await fetch('http://localhost:3000/graphql', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            query: `
+              mutation DeleteProfile($id: String!) {
+                deleteProfile(id: $id)
+              }
+            `,
+            variables: { id: profileId }
+          })
+        });
+
+        const deleteData = await deleteResponse.json();
+        if (deleteData.errors) {
+          throw new Error(deleteData.errors[0].message);
+        }
+
+        alert('Profil supprimé avec succès');
+        logout();
+      } catch (error) {
+        alert('Erreur lors de la suppression: ' + error.message);
+      }
+    });
+
+    function logout() {
+      localStorage.removeItem('token');
+      window.location.href = 'login.html';
+    }
+
+    loadProfile();
+  </script>
+</body>
+</html>

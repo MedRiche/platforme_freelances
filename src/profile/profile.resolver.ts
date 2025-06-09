@@ -49,7 +49,7 @@ async updateProfile(
     return this.profileService.findAll(user.role);
   }
 
-  @Query(() => Profile)
+@Query(() => Profile)
 @UseGuards(JwtAuthGuard)
 async myProfile(@CurrentUser() user: any): Promise<Profile> {
   return this.profileService.findByUserId(user.id);
