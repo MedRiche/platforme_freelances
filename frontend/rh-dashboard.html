@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tableau de bord RH</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background: #f4f4f4; }
+  </style>
+</head>
+<body>
+  <h1>Tableau de bord RH</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Prénom</th>
+        <th>Nom</th>
+        <th>Compétences</th>
+        <th>Liens</th>
+      </tr>
+    </thead>
+    <tbody id="profiles-list">
+      <!-- Profils insérés ici -->
+    </tbody>
+  </table>
+
+  <script>
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
+     if (!token) {
+    alert('Vous devez être connecté');
+    window.location.href = 'login.html';
+  }
+
+  const payload = JSON.parse(atob(token.split('.')[1]));
+  if (payload.role !== 'RH') {
+    alert('Accès réservé aux RH');
+    window.location.href = 'profile.html'; // ou autre page selon ton app
+  }
+    
+    const query = `
+      query {
+        profiles {
+          firstName
+          lastName
+          skills
+          professionalLinks
+        }
+      }
+    `;
+    fetch('/graphql', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ query }),
+    })
+      .then(res => res.json())
+      .then(res => {
+        if (res.errors) throw new Error(res.errors[0].message);
+        const profiles = res.data.profiles;
+        const tbody = document.getElementById('profiles-list');
+        profiles.forEach(p => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${p.firstName}</td>
+            <td>${p.lastName}</td>
+            <td>${p.skills.join(', ')}</td>
+            <td>${p.professionalLinks.join(', ')}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      })
+      .catch(err => alert("Erreur : " + err));
+  </script>
+</body>
+</html>

@@ -25,28 +25,7 @@ export class ProfileService {
     return this.profileRepository.save(profile);
   }
 
-  async createEmptyProfile(userId: string): Promise<Profile> {
-  const user = await this.userRepository.findOneOrFail({ 
-    where: { id: userId } 
-  });
-  
-  const profile = this.profileRepository.create({
-    firstName: 'Nouveau',
-    lastName: 'Utilisateur',
-    skills: [],
-    professionalLinks: [],
-    user
-  });
-  
-  return this.profileRepository.save(profile);
-}
 
-async findByUserId(userId: string): Promise<Profile> {
-  return this.profileRepository.findOne({ 
-    where: { user: { id: userId } },
-    relations: ['user']
-  });
-}
 
   async updateProfile(id: string, input: UpdateProfileInput, currentUserId: string, currentUserRole: string): Promise<Profile> {
     const profile = await this.profileRepository.findOneOrFail({ where: { id }, relations: ['user'] });
@@ -76,6 +55,8 @@ async findByUserId(userId: string): Promise<Profile> {
     return this.profileRepository.find({ relations: ['user'] });
   }
 
+  
+
   async findOne(id: string, currentUserId: string, currentUserRole: string): Promise<Profile> {
     const profile = await this.profileRepository.findOneOrFail({ where: { id }, relations: ['user'] });
     if (currentUserId !== profile.user.id && currentUserRole !== 'RH') {
@@ -83,4 +64,6 @@ async findByUserId(userId: string): Promise<Profile> {
     }
     return profile;
   }
+
+  
 }

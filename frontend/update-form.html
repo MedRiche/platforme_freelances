@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Modifier Profil Freelance</title>
+  <style>
+    body { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    form { display: flex; flex-direction: column; width: 300px; }
+    input, textarea { margin-bottom: 10px; padding: 8px; }
+    button { padding: 8px; }
+  </style>
+</head>
+<body>
+  <form id="update-form">
+    <h1>Modifier mon profil</h1>
+    <input type="text" id="firstname" placeholder="Prénom" required />
+    <input type="text" id="lastname" placeholder="Nom" required />
+    <textarea id="skills" placeholder="Compétences (séparées par des virgules)" required></textarea>
+    <textarea id="links" placeholder="Liens professionnels (séparés par des virgules)"></textarea>
+    <button type="submit">Mettre à jour</button>
+  </form>
+
+  <script>
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
+    if (!token || role !== 'FREELANCER') {
+      alert("Accès refusé");
+      window.location = 'login.html';
+    }
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    };
+    // Charger le profil actuel pour pré-remplir
+    const query = `query { myProfile { firstName lastName skills professionalLinks } }`;
+    fetch('/graphql', { method: 'POST', headers, body: JSON.stringify({ query }) })
+      .then(res => res.json())
+      .then(res => {
+        if (res.errors) throw new Error(res.errors[0].message);
+        const p = res.data.myProfile;
+        document.getElementById('firstname').value = p.firstName;
+        document.getElementById('lastname').value = p.lastName;
+        document.getElementById('skills').value = p.skills.join(', ');
+        document.getElementById('links').value = p.professionalLinks.join(', ');
+      })
+      .catch(err => alert("Erreur : " + err));
+
+    document.getElementById('update-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const firstName = document.getElementById('firstname').value;
+      const lastName = document.getElementById('lastname').value;
+      const skills = document.getElementById('skills').value.split(',').map(s => s.trim()).filter(s => s);
+      const links = document.getElementById('links').value.split(',').map(l => l.trim()).filter(l => l);
+      const mutation = `
+        mutation UpdateProfile($input: UpdateProfileInput!) {
+          updateProfile(input: $input) {
+            id
+          }
+        }
+      `;
+      const variables = { input: { firstName, lastName, skills, professionalLinks: links } };
+      try {
+        const res = await fetch('/graphql', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ query: mutation, variables }),
+        });
+        const result = await res.json();
+        if (result.errors) {
+          alert("Erreur : " + result.errors[0].message);
+        } else {
+          alert("Profil mis à jour.");
+          window.location = 'freelancer-profile.html';
+        }
+      } catch (err) {
+        alert("Erreur réseau : " + err);
+      }
+    };
+  </script>
+</body>
+</html>

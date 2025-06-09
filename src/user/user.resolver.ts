@@ -5,6 +5,7 @@ import { CreateUserInput, LoginInput } from './dto/user.input';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
+
 @Resolver(() => User)
 export class UserResolver {
   constructor(private userService: UserService) {}
@@ -22,6 +23,12 @@ export class UserResolver {
   async getUsers(): Promise<User[]> {
     return this.userService.findAll();
   }
+@Query(() => User)
+@UseGuards(JwtAuthGuard)
+async me(@Context('req') req): Promise<User> {
+  return this.userService.findOne(req.user.id);
+}
+
 
   @Query(() => [User])
   @UseGuards(JwtAuthGuard)

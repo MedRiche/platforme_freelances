@@ -7,7 +7,7 @@
     body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
     input, textarea, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; }
     button { background-color: #4CAF50; color: white; border: none; cursor: pointer; }
-    button.secondary { background-color: #f44336; }
+    button.secondary { background-color: #2196F3; margin-top: 10px; }
     .form-group { margin-bottom: 15px; }
     #message { color: green; }
     #error { color: red; }
@@ -34,6 +34,10 @@
     </div>
     <button type="submit">Enregistrer le profil</button>
   </form>
+
+  <!-- Nouveau bouton Voir profil -->
+  <button class="secondary" onclick="window.location.href='profile.html'">Voir profil</button>
+
   <p id="message"></p>
   <p id="error"></p>
 
@@ -58,7 +62,6 @@
       };
 
       try {
-        // Vérifier si le profil existe déjà
         const checkResponse = await fetch('http://localhost:3000/graphql', {
           method: 'POST',
           headers: {
@@ -73,7 +76,6 @@
         const checkData = await checkResponse.json();
         const profileExists = checkData.data?.myProfile?.id;
 
-        // Mutation pour créer ou mettre à jour le profil
         const mutation = profileExists ? `
           mutation UpdateProfile($id: String!, $input: UpdateProfileInput!) {
             updateProfile(id: $id, input: $input) { id }
@@ -115,7 +117,6 @@
       }
     });
 
-    // Pré-remplir le formulaire si le profil existe
     async function loadProfile() {
       try {
         const response = await fetch('http://localhost:3000/graphql', {

@@ -14,29 +14,12 @@ export class UserService {
     private jwtService: JwtService,
   ) {}
 
- async createUser(input: CreateUserInput): Promise<User> {
-  const { email, password, role } = input;
-  const hashedPassword = await bcrypt.hash(password, 10);
-  
-  const user = this.userRepository.create({ 
-    email, 
-    password: hashedPassword, 
-    role 
-  });
-
-  const savedUser = await this.userRepository.save(user);
-  
-  // Créer un profil vide
-  const profile = this.profileRepository.create({
-    firstName: '',
-    lastName: '',
-    user: savedUser
-  });
-  
-await this.profileService.createEmptyProfile(savedUser.id);
-  
-  return savedUser;
-}
+  async createUser(input: CreateUserInput): Promise<User> {
+    const { email, password, role } = input;
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = this.userRepository.create({ email, password: hashedPassword, role });
+    return this.userRepository.save(user);
+  }
 
   async findAll(): Promise<User[]> {
     return this.userRepository.find({ relations: ['profile'] });

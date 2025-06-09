@@ -9,6 +9,7 @@ import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
 
+
 @Resolver(() => Profile)
 export class ProfileResolver {
   constructor(private profileService: ProfileService) {}
@@ -49,11 +50,6 @@ async updateProfile(
     return this.profileService.findAll(user.role);
   }
 
-@Query(() => Profile)
-@UseGuards(JwtAuthGuard)
-async myProfile(@CurrentUser() user: any): Promise<Profile> {
-  return this.profileService.findByUserId(user.id);
-}
 
   @Query(() => Profile)
   @UseGuards(JwtAuthGuard)
@@ -63,5 +59,7 @@ async myProfile(@CurrentUser() user: any): Promise<Profile> {
   ): Promise<Profile> {
     return this.profileService.findOne(id, user.id, user.role);
   }
+
+
 }
 

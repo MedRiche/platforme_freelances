@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <title>Connexion</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; }
-    input, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; }
-    button { background-color: #2196F3; color: white; border: none; cursor: pointer; }
-    button:hover { background-color: #0b7dda; }
+    body { font-family: Arial, sans-serif; max-width: 400px; margin: 0 auto; padding: 20px; }
+    input, button { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; }
+    button { background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+    #error { color: red; }
   </style>
 </head>
 <body>
@@ -17,8 +17,7 @@
     <input type="password" id="password" placeholder="Mot de passe" required>
     <button type="submit">Se connecter</button>
   </form>
-  <p id="error" style="color: red;"></p>
-  <p>Pas encore inscrit? <a href="register.html">Créez un compte</a></p>
+  <p id="error"></p>
 
   <script>
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -26,30 +25,62 @@
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
       const errorElement = document.getElementById('error');
+      errorElement.textContent = '';
 
       try {
-        const response = await fetch('http://localhost:3000/graphql', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: `
-              mutation Login($input: LoginInput!) {
-                login(input: $input)
-              }
-            `,
-            variables: {
-              input: { email, password }
-            }
-          })
-        });
+       const response = await fetch('http://localhost:3000/graphql', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    query: `
+      mutation Login($input: LoginInput!) {
+        login(input: $input)
+      }
+    `,
+    variables: { input: { email, password } }
+  })
+});
 
-        const data = await response.json();
-        if (data.errors) {
-          throw new Error(data.errors[0].message);
+const data = await response.json();
+if (data.errors) throw new Error(data.errors[0].message);
+
+const token = data.data.login;
+localStorage.setItem('token', token);
+
+const payload = JSON.parse(atob(token.split('.')[1]));
+
+// Étape 2 — Requête pour récupérer le rôle de l'utilisateur connecté
+const meResponse = await fetch('http://localhost:3000/graphql', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    query: `
+      query {
+        me {
+          role
         }
+      }
+    `
+  })
+});
 
-        localStorage.setItem('token', data.data.login);
-        window.location.href = 'profile-form.html';
+
+
+const meData = await meResponse.json();
+
+
+const role = meData.data.me.role;
+
+// Redirection selon le rôle
+if (role === 'RH') {
+  window.location.href = 'rh-dashboard.html';
+} else {
+  window.location.href = 'profile.html';
+}
+
       } catch (error) {
         errorElement.textContent = error.message;
       }
