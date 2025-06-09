@@ -2,80 +2,146 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Modifier Profil Freelance</title>
+  <title>Modifier Profil</title>
   <style>
-    body { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-    form { display: flex; flex-direction: column; width: 300px; }
-    input, textarea { margin-bottom: 10px; padding: 8px; }
-    button { padding: 8px; }
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+    form { background: #f9f9f9; padding: 20px; border-radius: 8px; }
+    label { display: block; margin-top: 15px; }
+    input[type="text"], textarea { width: 100%; padding: 8px; margin-top: 5px; border-radius: 4px; border: 1px solid #ccc; }
+    button { margin-top: 20px; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
+    .save-btn { background: #4CAF50; color: white; }
+    .cancel-btn { background: #f44336; color: white; margin-left: 10px; }
   </style>
 </head>
 <body>
-  <form id="update-form">
-    <h1>Modifier mon profil</h1>
-    <input type="text" id="firstname" placeholder="Prénom" required />
-    <input type="text" id="lastname" placeholder="Nom" required />
-    <textarea id="skills" placeholder="Compétences (séparées par des virgules)" required></textarea>
-    <textarea id="links" placeholder="Liens professionnels (séparés par des virgules)"></textarea>
-    <button type="submit">Mettre à jour</button>
+  <h1>Modifier Profil</h1>
+  <form id="updateForm">
+    <label for="firstName">Prénom :</label>
+    <input type="text" id="firstName" name="firstName" required />
+
+    <label for="lastName">Nom :</label>
+    <input type="text" id="lastName" name="lastName" required />
+
+    <label for="skills">Compétences (séparées par des virgules) :</label>
+    <textarea id="skills" name="skills" rows="3"></textarea>
+
+    <label for="professionalLinks">Liens professionnels (séparés par des virgules) :</label>
+    <textarea id="professionalLinks" name="professionalLinks" rows="3"></textarea>
+
+    <button type="submit" class="save-btn">Enregistrer</button>
+    <button type="button" class="cancel-btn" id="cancelBtn">Annuler</button>
   </form>
 
   <script>
     const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role');
-    if (!token || role !== 'FREELANCER') {
-      alert("Accès refusé");
-      window.location = 'login.html';
+    if (!token) {
+      window.location.href = 'login.html';
     }
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + token
-    };
-    // Charger le profil actuel pour pré-remplir
-    const query = `query { myProfile { firstName lastName skills professionalLinks } }`;
-    fetch('/graphql', { method: 'POST', headers, body: JSON.stringify({ query }) })
-      .then(res => res.json())
-      .then(res => {
-        if (res.errors) throw new Error(res.errors[0].message);
-        const p = res.data.myProfile;
-        document.getElementById('firstname').value = p.firstName;
-        document.getElementById('lastname').value = p.lastName;
-        document.getElementById('skills').value = p.skills.join(', ');
-        document.getElementById('links').value = p.professionalLinks.join(', ');
-      })
-      .catch(err => alert("Erreur : " + err));
 
-    document.getElementById('update-form').onsubmit = async (e) => {
-      e.preventDefault();
-      const firstName = document.getElementById('firstname').value;
-      const lastName = document.getElementById('lastname').value;
-      const skills = document.getElementById('skills').value.split(',').map(s => s.trim()).filter(s => s);
-      const links = document.getElementById('links').value.split(',').map(l => l.trim()).filter(l => l);
-      const mutation = `
-        mutation UpdateProfile($input: UpdateProfileInput!) {
-          updateProfile(input: $input) {
-            id
-          }
-        }
-      `;
-      const variables = { input: { firstName, lastName, skills, professionalLinks: links } };
+    let profileId = null;
+
+    async function loadProfile() {
       try {
-        const res = await fetch('/graphql', {
+        const response = await fetch('http://localhost:3000/graphql', {
           method: 'POST',
-          headers,
-          body: JSON.stringify({ query: mutation, variables }),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            query: `{
+              me {
+                profile {
+                  id
+                  firstName
+                  lastName
+                  skills
+                  professionalLinks
+                }
+              }
+            }`
+          })
         });
-        const result = await res.json();
-        if (result.errors) {
-          alert("Erreur : " + result.errors[0].message);
-        } else {
-          alert("Profil mis à jour.");
-          window.location = 'freelancer-profile.html';
+
+        const result = await response.json();
+        if (result.errors || !result.data?.me?.profile) {
+          throw new Error(result.errors?.[0]?.message || "Profil introuvable");
         }
+
+        const profile = result.data.me.profile;
+        profileId = profile.id;
+
+        document.getElementById('firstName').value = profile.firstName || '';
+        document.getElementById('lastName').value = profile.lastName || '';
+        document.getElementById('skills').value = (profile.skills || []).join(', ');
+        document.getElementById('professionalLinks').value = (profile.professionalLinks || []).join(', ');
+
       } catch (err) {
-        alert("Erreur réseau : " + err);
+        alert('Erreur de chargement du profil : ' + err.message);
       }
-    };
+    }
+
+    document.getElementById('updateForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      if (!profileId) {
+        alert("ID du profil introuvable");
+        return;
+      }
+
+      const firstName = document.getElementById('firstName').value.trim();
+      const lastName = document.getElementById('lastName').value.trim();
+      const skills = document.getElementById('skills').value.split(',').map(s => s.trim()).filter(s => s);
+      const professionalLinks = document.getElementById('professionalLinks').value.split(',').map(s => s.trim()).filter(s => s);
+
+      try {
+        const response = await fetch('http://localhost:3000/graphql', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            query: `
+              mutation UpdateProfile($id: String!, $firstName: String!, $lastName: String!, $skills: [String!], $professionalLinks: [String!]) {
+                updateProfile(id: $id, input: {
+                  firstName: $firstName,
+                  lastName: $lastName,
+                  skills: $skills,
+                  professionalLinks: $professionalLinks
+                }) {
+                  id
+                }
+              }
+            `,
+            variables: {
+              id: profileId,
+              firstName,
+              lastName,
+              skills,
+              professionalLinks
+            }
+          })
+        });
+
+        const result = await response.json();
+        if (result.errors) {
+          throw new Error(result.errors[0].message);
+        }
+
+        alert("Profil mis à jour avec succès !");
+        window.location.href = 'profile.html';
+
+      } catch (err) {
+        alert("Erreur lors de la mise à jour : " + err.message);
+      }
+    });
+
+    document.getElementById('cancelBtn').addEventListener('click', () => {
+      window.location.href = 'profile.html';
+    });
+
+    loadProfile();
   </script>
 </body>
 </html>

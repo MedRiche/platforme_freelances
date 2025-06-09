@@ -17,7 +17,7 @@
 </head>
 <body>
   <h1>Mon Profil</h1>
-  
+
   <div class="profile-card">
     <div class="profile-field"><strong>Prénom:</strong> <span id="firstName"></span></div>
     <div class="profile-field"><strong>Nom:</strong> <span id="lastName"></span></div>
@@ -26,7 +26,7 @@
   </div>
 
   <div class="actions">
-    <button class="edit-btn" onclick="window.location.href='profile-form.html'">Modifier</button>
+    <button class="edit-btn" onclick="window.location.href='update-form.html'">Modifier</button>
     <button class="delete-btn" id="deleteBtn">Supprimer</button>
     <button class="logout-btn" onclick="logout()">Déconnexion</button>
   </div>
@@ -36,6 +36,8 @@
     if (!token) {
       window.location.href = 'login.html';
     }
+
+    let profileId = null;
 
     async function loadProfile() {
       try {
@@ -47,58 +49,46 @@
           },
           body: JSON.stringify({
             query: `{
-              myProfile {
-                firstName
-                lastName
-                skills
-                professionalLinks
+              me {
+                profile {
+                  id
+                  firstName
+                  lastName
+                  skills
+                  professionalLinks
+                }
               }
             }`
           })
         });
 
-        const data = await response.json();
-        if (data.errors) {
-          throw new Error(data.errors[0].message);
+        const result = await response.json();
+        if (result.errors || !result.data?.me?.profile) {
+          throw new Error(result.errors?.[0]?.message || "Profil introuvable");
         }
 
-        const profile = data.data.myProfile;
+        const profile = result.data.me.profile;
+        profileId = profile.id;
+
         document.getElementById('firstName').textContent = profile.firstName || 'Non renseigné';
         document.getElementById('lastName').textContent = profile.lastName || 'Non renseigné';
-        document.getElementById('skills').textContent = profile.skills?.join(', ') || 'Aucune';
-        document.getElementById('professionalLinks').textContent = profile.professionalLinks?.join(', ') || 'Aucun';
-      } catch (error) {
-        alert('Erreur de chargement du profil: ' + error.message);
+        document.getElementById('skills').textContent = (profile.skills || []).join(', ') || 'Aucune';
+        document.getElementById('professionalLinks').textContent = (profile.professionalLinks || []).join(', ') || 'Aucun';
+
+      } catch (err) {
+        alert('Erreur de chargement du profil : ' + err.message);
       }
     }
 
     document.getElementById('deleteBtn').addEventListener('click', async () => {
-      if (!confirm('Êtes-vous sûr de vouloir supprimer votre profil? Cette action est irréversible.')) {
+      if (!confirm("Êtes-vous sûr de vouloir supprimer votre profil ?")) return;
+      if (!profileId) {
+        alert("ID du profil introuvable");
         return;
       }
 
       try {
-        // Récupérer l'ID du profil d'abord
-        const checkResponse = await fetch('http://localhost:3000/graphql', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            query: `{ myProfile { id } }`
-          })
-        });
-
-        const checkData = await checkResponse.json();
-        const profileId = checkData.data?.myProfile?.id;
-
-        if (!profileId) {
-          throw new Error('Profil non trouvé');
-        }
-
-        // Supprimer le profil
-        const deleteResponse = await fetch('http://localhost:3000/graphql', {
+        const response = await fetch('http://localhost:3000/graphql', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -114,15 +104,16 @@
           })
         });
 
-        const deleteData = await deleteResponse.json();
-        if (deleteData.errors) {
-          throw new Error(deleteData.errors[0].message);
+        const result = await response.json();
+        if (result.errors) {
+          throw new Error(result.errors[0].message);
         }
 
-        alert('Profil supprimé avec succès');
+        alert("Profil supprimé avec succès !");
         logout();
-      } catch (error) {
-        alert('Erreur lors de la suppression: ' + error.message);
+
+      } catch (err) {
+        alert("Erreur de suppression : " + err.message);
       }
     });
 
